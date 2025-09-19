@@ -58,25 +58,22 @@ def load_messages():
             df[col] = ""
     return df[["Name", "Message", "Timestamp"]]
 
-
 @app.get("/data")
 def get_data():
     df, repaid_cols, days_late_col = load_data()
 
-    # Clean invalid JSON values
-    safe_df = df.replace([float("inf"), float("-inf")], None).fillna(value=None)
+    # Force replace NaN, NA, NaT, inf with None
+    safe_df = df.replace([pd.NA, pd.NaT, float("inf"), float("-inf")], None)
+    safe_df = safe_df.where(pd.notnull(safe_df), None)
 
-    # Convert datetime columns to string
-    for col in safe_df.select_dtypes(include=["datetime64[ns]"]).columns:
-        safe_df[col] = safe_df[col].astype(str)
-
-    data = safe_df.to_dict(orient="records")
+    # Convert ALL values to strings so JSON never breaks
+    data = safe_df.astype(str).replace("nan", None).to_dict(orient="records")
 
     return {
-        "columns": safe_df.columns.tolist(),
+        "columns": list(safe_df.columns),
         "data": data,
         "repaid_cols": repaid_cols,
-        "days_late_col": days_late_col,
+        "days_late_col": days_late_col
     }
 
 
@@ -111,3 +108,7 @@ def post_message(name: str, message: str):
     df.to_csv(MESSAGES_FILE, index=False)
 
     return {"status": "success", "message": "Message posted!"}
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "message": "API is running ✅"}
+
