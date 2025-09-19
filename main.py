@@ -49,16 +49,20 @@ def load_messages():
         if col not in df.columns:
             df[col] = ""
     return df[["Name", "Message", "Timestamp"]]
-
 @app.get("/data")
 def get_data():
     df, repaid_cols, days_late_col = load_data()
+
+    # Replace NaN with None so JSON can handle it
+    data = df.where(pd.notnull(df), None).to_dict(orient="records")
+
     return {
         "columns": df.columns.tolist(),
-        "data": df.to_dict(orient="records"),
+        "data": data,
         "repaid_cols": repaid_cols,
         "days_late_col": days_late_col
     }
+
 
 @app.get("/messages")
 def get_messages():
