@@ -75,6 +75,34 @@ def get_data():
         "repaid_cols": repaid_cols,
         "days_late_col": days_late_col
     }
+@app.get("/officer_totals")
+def officer_totals():
+    try:
+        df, repaid_cols, _ = load_data()
+        if not repaid_cols:
+            return {"data": []}
+
+        # Melt repayment columns into long format (officer, date, amount)
+        melted = df.melt(
+            id_vars=["officer"], 
+            value_vars=repaid_cols,
+            var_name="Repaid Date",
+            value_name="Amount"
+        )
+
+        # Clean up
+        melted["Amount"] = pd.to_numeric(melted["Amount"], errors="coerce").fillna(0)
+
+        # Group by officer + repaid date
+        officer_daily = (
+            melted.groupby(["officer", "Repaid Date"])["Amount"]
+            .sum()
+            .reset_index()
+        )
+
+        return {"data": officer_daily.to_dict(orient="records")}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/messages")
