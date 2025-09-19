@@ -53,8 +53,11 @@ def load_messages():
 def get_data():
     df, repaid_cols, days_late_col = load_data()
 
-    # Replace NaN with None so JSON can handle it
-    data = df.where(pd.notnull(df), None).to_dict(orient="records")
+    # Replace NaN/inf values with None so JSON can handle it
+    safe_df = df.replace([pd.NA, pd.NaT, float("inf"), float("-inf")], None)
+    safe_df = safe_df.where(pd.notnull(safe_df), None)
+
+    data = safe_df.to_dict(orient="records")
 
     return {
         "columns": df.columns.tolist(),
@@ -62,6 +65,7 @@ def get_data():
         "repaid_cols": repaid_cols,
         "days_late_col": days_late_col
     }
+
 
 
 @app.get("/messages")
